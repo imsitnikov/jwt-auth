@@ -1,0 +1,7 @@
+{
+    "extends": ["@gravity-ui/eslint-config", "@gravity-ui/eslint-config/prettier"],
+    "env": {
+        "node": true,
+        "jest": true
+    }
+}

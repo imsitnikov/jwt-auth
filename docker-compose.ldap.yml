@@ -1,0 +1,28 @@
+services:
+  openldap:
+    container_name: datalens-enterprise-ldap
+    image: osixia/openldap
+    restart: always
+    environment:
+      LDAP_TLS: "false"
+    ports:
+      - 8089:389
+    networks:
+      - net-openldap
+
+  openldap-ui:
+    image: osixia/phpldapadmin
+    container_name: datalens-enterprise-ldap-ui
+    restart: always
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+      PHPLDAPADMIN_HTTPS: "false"
+    depends_on:
+      - openldap
+    ports:
+      - 18080:80
+    networks:
+      - net-openldap
+
+networks:
+  net-openldap:
