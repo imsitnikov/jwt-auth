@@ -166,7 +166,7 @@ export class JwtAuth {
                 .timeout(Session.DEFAULT_QUERY_TIMEOUT);
 
             if (!refreshTokenModel) {
-                if (session && session.userIp !== userIp) {
+                if (session && session.userIp && session.userIp !== userIp) {
                     // Delete compromised session
                     await Session.query(Session.primary)
                         .delete()

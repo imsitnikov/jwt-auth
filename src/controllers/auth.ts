@@ -94,7 +94,7 @@ export default {
                 res.status(401).send("Can't refresh tokens");
             }
         } else {
-            res.status(400).send('No refreshToken');
+            res.status(401).send('No refreshToken');
         }
     },
 };
