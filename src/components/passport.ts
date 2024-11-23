@@ -52,14 +52,13 @@ export const initPassport = (config: AppConfig) => {
                         throw new Error('No local user');
                     }
 
-                    if (!user.password || !user.passwordSalt) {
+                    if (!user.password) {
                         throw new Error('No password for local user');
                     }
 
-                    const authResult = comparePasswords({
+                    const authResult = await comparePasswords({
                         inputPassword: password,
-                        storedPassword: user.password,
-                        salt: user.passwordSalt,
+                        storedPasswordHash: user.password,
                     });
 
                     if (authResult) {

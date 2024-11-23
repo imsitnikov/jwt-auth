@@ -15,5 +15,4 @@ export class User extends Model {
     updatedAt!: string;
     login!: string | null;
     password!: string | null;
-    passwordSalt!: string | null;
 }

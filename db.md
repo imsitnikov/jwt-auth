@@ -7,8 +7,7 @@ CREATE TABLE users (
 	created_at TIMESTAMPTZ DEFAULT NOW(),
 	updated_at TIMESTAMPTZ DEFAULT NOW(),
 	login TEXT,
-	password TEXT,
-	password_salt TEXT
+	password TEXT
 );
 
 ALTER TABLE users ADD CONSTRAINT local_required_login_password_constraint CHECK (
@@ -16,8 +15,7 @@ ALTER TABLE users ADD CONSTRAINT local_required_login_password_constraint CHECK 
 	(
 		user_id LIKE 'local:%' AND
 		login IS NOT NULL AND
-		password IS NOT NULL AND
-		password_salt IS NOT NULL
+		password IS NOT NULL
 	)
 );
 

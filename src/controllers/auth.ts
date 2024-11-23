@@ -32,8 +32,8 @@ export default {
             return;
         }
 
-        const passwordSalt = generateSalt();
-        const hashedPassword = hashPassword({
+        const passwordSalt = await generateSalt();
+        const hashedPassword = await hashPassword({
             password,
             salt: passwordSalt,
         });
@@ -47,7 +47,6 @@ export default {
                     displayName,
                     login,
                     password: hashedPassword,
-                    passwordSalt,
                 })
                 .timeout(User.DEFAULT_QUERY_TIMEOUT);
 

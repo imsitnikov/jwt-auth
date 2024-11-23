@@ -1,35 +1,48 @@
-import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 
-export const generateSalt = (rounds = 12) => {
-    return crypto
-        .randomBytes(Math.ceil(rounds / 2))
-        .toString('hex')
-        .slice(0, rounds);
+export const generateSalt = () => {
+    return new Promise<string>((resolve, reject) => {
+        bcrypt.genSalt(12, (err, salt) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(salt);
+        });
+    });
 };
 
 export const hashPassword = ({password, salt}: {password: string; salt: string}) => {
-    const hash = crypto.createHmac('sha512', salt);
-    hash.update(password);
-    return hash.digest('hex');
+    return new Promise<string>((resolve, reject) => {
+        bcrypt.hash(password, salt, (err, hash) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(hash);
+        });
+    });
 };
 
-export const comparePasswords = ({
+export const comparePasswords = async ({
     inputPassword,
-    storedPassword,
-    salt,
+    storedPasswordHash,
 }: {
     inputPassword: string;
-    storedPassword: string;
-    salt: string;
+    storedPasswordHash: string;
 }) => {
-    const hashedInputPassword = hashPassword({
-        password: inputPassword,
-        salt,
+    return new Promise<boolean>((resolve, reject) => {
+        bcrypt.compare(inputPassword, storedPasswordHash, (err, result) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (result) {
+                resolve(true);
+            } else {
+                reject(true);
+            }
+        });
     });
-
-    if (hashedInputPassword === storedPassword) {
-        return true;
-    }
-
-    return false;
 };
