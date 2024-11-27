@@ -25,11 +25,8 @@ declare module '@gravity-ui/nodekit' {
         refreshTokenTTL: number;
         sessionTTL: number;
 
-        accessTokenPrivateKey: string;
-        accessTokenPublicKey: string;
-
-        refreshTokenPrivateKey: string;
-        refreshTokenPublicKey: string;
+        tokenPrivateKey: string;
+        tokenPublicKey: string;
 
         samlAuth: {
             id: string;

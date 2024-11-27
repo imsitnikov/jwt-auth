@@ -1,6 +1,26 @@
 MIGRATION
 
 ```sql
+CREATE SEQUENCE counter_seq;
+
+CREATE OR REPLACE FUNCTION get_id(OUT result bigint) AS $$
+DECLARE
+	our_epoch bigint := 1514754000000;
+	seq_id bigint;
+	now_millis bigint;
+	shard_id int := 10;
+BEGIN
+	SELECT nextval('counter_seq') % 4096 INTO seq_id;
+
+	SELECT FLOOR(EXTRACT(EPOCH FROM clock_timestamp()) * 1000) INTO now_millis;
+	result := (now_millis - our_epoch) << 23;
+	result := result | (shard_id << 10);
+	result := result | (seq_id);
+END;
+$$ LANGUAGE PLPGSQL;
+
+--
+
 CREATE TABLE users (
 	user_id TEXT PRIMARY KEY,
 	display_name TEXT NOT NULL,
@@ -22,7 +42,7 @@ ALTER TABLE users ADD CONSTRAINT local_required_login_password_constraint CHECK 
 --
 
 CREATE TABLE sessions (
-	session_id TEXT PRIMARY KEY,
+	session_id BIGINT NOT NULL PRIMARY KEY DEFAULT get_id(),
 	user_id TEXT NOT NULL,
 	user_agent TEXT NOT NULL,
 	user_ip  TEXT,
@@ -38,8 +58,8 @@ ALTER TABLE sessions
 --
 
 CREATE TABLE refresh_tokens (
-	refresh_token TEXT PRIMARY KEY,
-	session_id TEXT NOT NULL,
+	refresh_token_id BIGINT NOT NULL PRIMARY KEY DEFAULT get_id(),
+	session_id BIGINT NOT NULL,
 	created_at TIMESTAMPTZ DEFAULT NOW(),
 	expired_at TIMESTAMPTZ NOT NULL
 );

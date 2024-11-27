@@ -1,5 +1,6 @@
 import {Request, Response} from '@gravity-ui/expresskit';
 
+import {prepareResponseAsync} from '../components/response-presenter';
 import {RefreshToken} from '../db/models/refresh-token';
 import {Session} from '../db/models/session';
 import {User} from '../db/models/user';
@@ -13,7 +14,8 @@ export default {
             .first()
             .timeout(User.DEFAULT_QUERY_TIMEOUT);
 
-        res.status(200).send(user);
+        const {code, response} = await prepareResponseAsync({data: user});
+        res.status(code).send(response);
     },
 
     getUsers: async (req: Request, res: Response) => {
@@ -21,7 +23,9 @@ export default {
             .select()
             .orderBy('createdAt', 'desc')
             .timeout(User.DEFAULT_QUERY_TIMEOUT);
-        res.status(200).send(users);
+
+        const {code, response} = await prepareResponseAsync({data: users});
+        res.status(code).send(response);
     },
 
     deleteUser: async (req: Request, res: Response) => {
@@ -48,7 +52,8 @@ export default {
             .orderBy('createdAt', 'desc')
             .timeout(Session.DEFAULT_QUERY_TIMEOUT);
 
-        res.status(200).send(sessions);
+        const {code, response} = await prepareResponseAsync({data: sessions});
+        res.status(code).send(response);
     },
 
     getUserSessions: async (req: Request, res: Response) => {
@@ -62,7 +67,8 @@ export default {
             .orderBy('createdAt', 'desc')
             .timeout(Session.DEFAULT_QUERY_TIMEOUT);
 
-        res.status(200).send(sessions);
+        const {code, response} = await prepareResponseAsync({data: sessions});
+        res.status(code).send(response);
     },
 
     deleteSession: async (req: Request, res: Response) => {
@@ -89,21 +95,22 @@ export default {
             .orderBy('createdAt', 'desc')
             .timeout(Session.DEFAULT_QUERY_TIMEOUT);
 
-        res.status(200).send(refreshTokens);
+        const {code, response} = await prepareResponseAsync({data: refreshTokens});
+        res.status(code).send(response);
     },
 
     deleteRefreshToken: async (req: Request, res: Response) => {
-        const refreshToken = req.params.refreshToken as string;
+        const refreshTokenId = req.params.refreshTokenId as string;
 
-        if (!refreshToken) {
-            res.status(400).send('No refreshToken');
+        if (!refreshTokenId) {
+            res.status(400).send('No refreshTokenId');
             return;
         }
 
         await RefreshToken.query(RefreshToken.primary)
             .delete()
             .where({
-                refreshToken,
+                refreshTokenId,
             })
             .timeout(RefreshToken.DEFAULT_QUERY_TIMEOUT);
 

@@ -1,14 +1,14 @@
 import {Request, Response} from '@gravity-ui/expresskit';
 import {transaction} from 'objection';
 import requestIp from 'request-ip';
-import {v4 as uuidv4} from 'uuid';
 
 import {clearAuthCookies, getAuthCookies, setAuthCookie} from '../components/cookies';
 import {JwtAuth} from '../components/jwt-auth';
 import {generateSalt, hashPassword} from '../components/passwords';
 import {LOCAL_IDENTITY_ID} from '../constants';
+import {getId} from '../db';
 import {User} from '../db/models/user';
-import {makeCombinedUserId} from '../utils';
+import {encodeId, makeCombinedUserId} from '../utils';
 
 export default {
     signup: async (req: Request, res: Response) => {
@@ -38,7 +38,12 @@ export default {
             salt: passwordSalt,
         });
 
-        const userId = makeCombinedUserId({userId: uuidv4(), identityId: LOCAL_IDENTITY_ID});
+        const localUserId = await getId();
+        const encodedLocalUserId = encodeId(localUserId);
+        const userId = makeCombinedUserId({
+            userId: encodedLocalUserId,
+            identityId: LOCAL_IDENTITY_ID,
+        });
 
         await transaction(User.primary, async (transactionTrx) => {
             await User.query(transactionTrx)

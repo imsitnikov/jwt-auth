@@ -22,11 +22,8 @@ UI_APP_ENDPOINT=http://localhost:3000
 
 POSTGRES_DSN_LIST=<строка подключения к базе данных>
 
-ACCESS_TOKEN_PRIVATE_KEY=<приватный rsa ключ для accessToken>
-ACCESS_TOKEN_PUBLIC_KEY=<публичный rsa ключ для accessToken>
-
-REFRESH_TOKEN_PRIVATE_KEY=<приватный rsa ключ для refreshToken>
-REFRESH_TOKEN_PUBLIC_KEY=<публичный rsa ключ для refreshToken>
+TOKEN_PRIVATE_KEY=<приватный rsa ключ для токенов>
+TOKEN_PUBLIC_KEY=<публичный rsa ключ для токенов>
 
 SAML_AUTH_ID=saml-1
 SAML_AUTH_ENTRY_POINT=<entry point для saml приложения>

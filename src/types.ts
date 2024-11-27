@@ -20,6 +20,7 @@ export type AccessTokenPayload = ExpirableTokenPayload & {
 };
 
 export type RefreshTokenPayload = {
+    refreshTokenId: string;
     userId: string;
     sessionId: string;
 };

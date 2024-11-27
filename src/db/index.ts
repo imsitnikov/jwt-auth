@@ -1,5 +1,5 @@
 import {initedDB} from '../nodekit';
 
-const {db, Model, helpers} = initedDB;
+const {db, Model, getId, helpers} = initedDB;
 
-export {db, Model, helpers};
+export {db, Model, getId, helpers};

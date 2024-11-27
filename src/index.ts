@@ -1,4 +1,4 @@
-import {ExpressKit, NextFunction, Request, Response} from '@gravity-ui/expresskit';
+import {AppMiddleware, ExpressKit, NextFunction, Request, Response} from '@gravity-ui/expresskit';
 import {AppError} from '@gravity-ui/nodekit';
 import dotenv from 'dotenv';
 import passport from 'passport';
@@ -7,14 +7,17 @@ dotenv.config();
 
 import {afterSuccessAuth} from './components/cookies';
 import {JwtAuth} from './components/jwt-auth';
+import {decodeIdsMiddleware} from './components/middlewares/decode-ids';
 import {initPassport} from './components/passport';
 import {nodekit} from './nodekit';
-import {routes} from './routes';
+import {getRoutes} from './routes';
 
 nodekit.config.appFinalErrorHandler = async (error: AppError, req: Request, res: Response) => {
     req.ctx.logError('Error', error);
     res.status(500).send(error);
 };
+
+const afterAuth: AppMiddleware[] = [decodeIdsMiddleware];
 
 nodekit.config.appAuthHandler = async (req: Request, res: Response, next: NextFunction) => {
     req.ctx.log('AUTH');
@@ -48,7 +51,7 @@ nodekit.config.appAuthHandler = async (req: Request, res: Response, next: NextFu
     res.status(401).send('Unauthorized access');
 };
 
-const app = new ExpressKit(nodekit, routes, {
+const app = new ExpressKit(nodekit, getRoutes({afterAuth}), {
     beforeRoutes: (express) => {
         express.post(
             '/signin',

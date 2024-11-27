@@ -84,9 +84,14 @@ export const initDB = (nodekit: NodeKit) => {
         },
     });
 
+    async function getId() {
+        const queryResult = await db.primary.raw('select get_id() as id');
+        return queryResult.rows[0].id;
+    }
+
     class Model extends CoreBaseModel {
         static DEFAULT_QUERY_TIMEOUT = DEFAULT_QUERY_TIMEOUT;
     }
 
-    return {db, Model, helpers};
+    return {db, Model, getId, helpers};
 };

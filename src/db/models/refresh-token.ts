@@ -6,10 +6,10 @@ export class RefreshToken extends Model {
     }
 
     static get idColumn() {
-        return 'refreshToken';
+        return 'refreshTokenId';
     }
 
-    refreshToken!: string;
+    refreshTokenId!: string;
     sessionId!: string;
     createdAt!: string;
     expiredAt!: string;

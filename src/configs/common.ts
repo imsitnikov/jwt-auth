@@ -18,11 +18,8 @@ const config: Partial<AppConfig> = {
     refreshTokenTTL: 60 * 60, // 1 hour
     sessionTTL: 60 * 60 * 24 * 30, // 30 days
 
-    accessTokenPrivateKey: getEnvCert(process.env.ACCESS_TOKEN_PRIVATE_KEY as string),
-    accessTokenPublicKey: getEnvCert(process.env.ACCESS_TOKEN_PUBLIC_KEY as string),
-
-    refreshTokenPrivateKey: getEnvCert(process.env.REFRESH_TOKEN_PRIVATE_KEY as string),
-    refreshTokenPublicKey: getEnvCert(process.env.REFRESH_TOKEN_PUBLIC_KEY as string),
+    tokenPrivateKey: getEnvCert(process.env.TOKEN_PRIVATE_KEY as string),
+    tokenPublicKey: getEnvCert(process.env.TOKEN_PUBLIC_KEY as string),
 
     samlAuth: {
         id: process.env.SAML_AUTH_ID as string,

@@ -1,11 +1,12 @@
 import {AppContext} from '@gravity-ui/nodekit';
 import jwt from 'jsonwebtoken';
 import {TransactionOrKnex, raw, transaction} from 'objection';
-import {v4 as uuidv4} from 'uuid';
 
+import {getId} from '../db';
 import {RefreshToken} from '../db/models/refresh-token';
 import {Session} from '../db/models/session';
 import {AccessTokenPayload, RefreshTokenPayload} from '../types';
+import {decodeId, encodeId} from '../utils';
 
 const algorithm = 'RS256';
 
@@ -28,27 +29,33 @@ export class JwtAuth {
     ) => {
         ctx.log('GENERATE_TOKENS', {userId, sessionId});
 
+        const encodedSessionId = encodeId(sessionId);
+
         const accessToken = jwt.sign(
             {
                 userId,
-                sessionId,
+                sessionId: encodedSessionId,
             },
-            ctx.config.accessTokenPrivateKey,
+            ctx.config.tokenPrivateKey,
             {algorithm, expiresIn: `${ctx.config.accessTokenTTL}s`},
         );
 
+        const refreshTokenId = await getId();
+        const encodedRefreshTokenId = encodeId(refreshTokenId);
+
         const refreshToken = jwt.sign(
             {
+                refreshTokenId: encodedRefreshTokenId,
                 userId,
-                sessionId,
+                sessionId: encodedSessionId,
             },
-            ctx.config.refreshTokenPrivateKey,
+            ctx.config.tokenPrivateKey,
             {algorithm},
         );
 
         await RefreshToken.query(trx ?? RefreshToken.primary)
             .insert({
-                refreshToken,
+                refreshTokenId,
                 sessionId,
                 expiredAt: raw(`NOW() + INTERVAL '?? SECOND'`, [ctx.config.refreshTokenTTL]),
             })
@@ -75,11 +82,8 @@ export class JwtAuth {
         ctx.log('START_SESSION', {userId, userAgent});
 
         return await transaction(trx ?? Session.primary, async (transactionTrx) => {
-            const sessionId = uuidv4();
-
-            await Session.query(transactionTrx)
+            const session = await Session.query(transactionTrx)
                 .insert({
-                    sessionId,
                     userId,
                     userAgent: userAgent ?? 'Unknown',
                     userIp,
@@ -92,7 +96,7 @@ export class JwtAuth {
                 {trx: transactionTrx, ctx},
                 {
                     userId,
-                    sessionId,
+                    sessionId: session.sessionId,
                 },
             );
 
@@ -110,30 +114,42 @@ export class JwtAuth {
     ) => {
         ctx.log('CLOSE_SESSION');
 
-        return await transaction(trx ?? RefreshToken.primary, async (transactionTrx) => {
-            const refreshTokenModel = await RefreshToken.query(transactionTrx)
-                .select()
-                .where({
-                    refreshToken,
-                })
-                .first()
-                .timeout(RefreshToken.DEFAULT_QUERY_TIMEOUT);
+        try {
+            const token = this.verifyRefreshToken({
+                ctx,
+                refreshToken,
+            });
 
-            if (refreshTokenModel) {
-                ctx.log('SESSION_INFO', {
-                    sessionId: refreshTokenModel.sessionId,
-                });
+            const decodedRefreshTokenId = decodeId(token.refreshTokenId);
 
-                await Session.query(transactionTrx)
-                    .delete()
+            return await transaction(trx ?? RefreshToken.primary, async (transactionTrx) => {
+                const refreshTokenModel = await RefreshToken.query(transactionTrx)
+                    .select()
                     .where({
-                        sessionId: refreshTokenModel.sessionId,
+                        refreshTokenId: decodedRefreshTokenId,
                     })
+                    .first()
                     .timeout(RefreshToken.DEFAULT_QUERY_TIMEOUT);
-            } else {
-                ctx.log('REFRESH_TOKEN_NOT_EXISTS');
-            }
-        });
+
+                if (refreshTokenModel) {
+                    ctx.log('SESSION_INFO', {
+                        sessionId: refreshTokenModel.sessionId,
+                    });
+
+                    await Session.query(transactionTrx)
+                        .delete()
+                        .where({
+                            sessionId: refreshTokenModel.sessionId,
+                        })
+                        .timeout(RefreshToken.DEFAULT_QUERY_TIMEOUT);
+                } else {
+                    ctx.log('REFRESH_TOKEN_NOT_EXISTS');
+                }
+            });
+        } catch (err) {
+            ctx.logError('CLOSE_SESSION_ERROR', err);
+            throw err;
+        }
     };
 
     static refreshTokens = async (
@@ -149,19 +165,26 @@ export class JwtAuth {
         ctx.log('REFRESH_TOKENS');
 
         try {
-            const {userId, sessionId} = this.verifyRefreshToken({ctx, refreshToken});
+            const token = this.verifyRefreshToken({
+                ctx,
+                refreshToken,
+            });
+
+            const userId = token.userId;
+            const decodedRefreshTokenId = decodeId(token.refreshTokenId);
+            const decodedSessionId = decodeId(token.sessionId);
 
             const refreshTokenModel = await RefreshToken.query(RefreshToken.primary)
                 .select()
                 .where({
-                    refreshToken,
+                    refreshTokenId: decodedRefreshTokenId,
                 })
                 .first()
                 .timeout(RefreshToken.DEFAULT_QUERY_TIMEOUT);
 
             const session = await Session.query(Session.primary)
                 .select()
-                .where({sessionId, userId})
+                .where({sessionId: decodedSessionId, userId})
                 .first()
                 .timeout(Session.DEFAULT_QUERY_TIMEOUT);
 
@@ -171,7 +194,7 @@ export class JwtAuth {
                     await Session.query(Session.primary)
                         .delete()
                         .where({
-                            sessionId,
+                            sessionId: decodedSessionId,
                         })
                         .timeout(Session.DEFAULT_QUERY_TIMEOUT);
                 }
@@ -194,19 +217,19 @@ export class JwtAuth {
             return await transaction(trx ?? RefreshToken.primary, async (transactionTrx) => {
                 await RefreshToken.query(transactionTrx)
                     .delete()
-                    .where({refreshToken})
+                    .where({refreshTokenId: decodedRefreshTokenId})
                     .timeout(RefreshToken.DEFAULT_QUERY_TIMEOUT);
 
                 const result = await this.generateTokens(
                     {trx: transactionTrx, ctx},
-                    {userId, sessionId},
+                    {userId, sessionId: decodedSessionId},
                 );
 
                 await Session.query(transactionTrx)
                     .patch({
                         userIp,
                     })
-                    .where({sessionId, userId})
+                    .where({sessionId: decodedSessionId, userId})
                     .timeout(Session.DEFAULT_QUERY_TIMEOUT);
 
                 return result;
@@ -221,10 +244,7 @@ export class JwtAuth {
         ctx.log('VERIFY_ACCESS_TOKEN');
 
         try {
-            const result = jwt.verify(
-                accessToken,
-                ctx.config.accessTokenPublicKey,
-            ) as AccessTokenPayload;
+            const result = jwt.verify(accessToken, ctx.config.tokenPublicKey) as AccessTokenPayload;
             ctx.log('VERIFY_ACCESS_TOKEN_SUCCESS');
             return result;
         } catch (err) {
@@ -239,7 +259,7 @@ export class JwtAuth {
         try {
             const result = jwt.verify(
                 refreshToken,
-                ctx.config.refreshTokenPublicKey,
+                ctx.config.tokenPublicKey,
             ) as RefreshTokenPayload;
             ctx.log('VERIFY_REFRESH_TOKEN_SUCCESS');
             return result;
